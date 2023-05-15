@@ -4,11 +4,11 @@ app= Flask(__name__)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
+    return render_template('Home.html')
 
 @app.route('/Descargar')
 def descargar():
-    return render_template('descargar.html')
+    return render_template('Descargar.html')
 
 @app.route('/Trabajo')
 def trabajo():
@@ -16,11 +16,11 @@ def trabajo():
 
 @app.route('/contactanos')
 def contactanos():
-    return render_template('contactanos.html')
+    return render_template('contacto.html')
 
-@app.route('/Politica_pribacidad')
+@app.route('/Politica')
 def political_pribacidad():
-    return render_template('political_pribacidad.html')
+    return render_template('politicas.html')
 
 
 # error handling
@@ -32,5 +32,5 @@ def error_500():
     return render_template('error_500.html')
 
 # local development
-if __name__ == '__main__':
-    app.run(host='0.0.0.0',debug=True)
+# if __name__ == '__main__':
+#     app.run(host='0.0.0.0',debug=True)
