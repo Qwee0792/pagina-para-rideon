@@ -1,17 +1,14 @@
-from flask import Flask, Response, jsonify,render_template, request, session
+from flask import Flask, render_template, request
 import os
-
-# install dependencies for pip 
-os.system('pip install sqlite3')
-os.system('python -m pip install sqlite3')
-os.system('py -m pip install sqlite3')
-os.system('python -m pip install --upgrade pip')
-os.system('py -m pip install --upgrade pip')
-
-# creamos el segundo proseso de sql para conductores
+import tcpProtocol
+import requests
+import json
 import database_connector
 
-app= Flask(__name__)
+app = Flask(__name__)
+
+# Creamos el segundo proceso de SQL para conductores
+database_connector.sqlconductor_create()
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -30,52 +27,50 @@ def contactanos():
     return render_template('contacto.html')
 
 @app.route('/Politica')
-def political_pribacidad():
+def political_privacidad():
     return render_template('politicas.html')
 
-
-# error handling
+# Error handling
 @app.errorhandler(404)
-def error_404():
-    return render_template('error_404.html')
+def error_404(e):
+    return render_template('error_404.html'), 404
+
 @app.errorhandler(500)
-def error_500():
-    return render_template('error_500.html')
+def error_500(e):
+    return render_template('error_500.html'), 500
 
 # SQL conductores NO HTML solo HTTPS support
-
-import xml.etree.ElementTree as ET
-
 @app.route('/sql_conductores', methods=['POST'])
 def procesar_datos():
-    # Crear base de datos
-    database_connector.sqlconductor_create()
-    # preguntar a base de datos
-    dataConductorRequest= request.get_json()
-    username = dataConductorRequest['username']
-    # prosesar solisitud en base de datos 
-    anwer= database_connector.sqlconductor_pregunta(username)
-    respuesta = anwer
-    idConductor= respuesta.get('id')
-    numAuto= respuesta.get('auto')
-    timeConductor= respuesta.get('tiempo')
-    autorisadoConductor = respuesta.get('autorisado')
-    print(timeConductor)
-    print(numAuto)
-    print(autorisadoConductor)
-    print(idConductor)
-    # crear el json para respomder
-    import json
-    data = {}
-    data['Datos'] = []
-    data['Datos'].append({
-        'id':idConductor,
-        'auto': numAuto,
-        'time': timeConductor,
-        'autorisado': autorisadoConductor})
+    ip_client = request.remote_addr
+    data = tcpProtocol.tcp_server()
     
-    return data
+    if data is None:
+        tcpProtocol.enviar_datos(ip_client, json.dumps({'error': 'La consulta fue NULL', 'code': 404}))
+        return 'Error: La consulta fue NULL', 404
+    else:
+        username = data['user']
+        answer = database_connector.sqlconductor_pregunta(username)
 
-# local development
+        if answer is None:
+            tcpProtocol.enviar_datos(ip_client, json.dumps({'error': 'No se encontró información para el conductor', 'code': 404}))
+            return 'Error: No se encontró información para el conductor', 404
+
+        auto = answer['auto']
+        id_conductor = answer['id']
+        autorizado = answer['autorizado']
+        usernameConductor = answer['usernameConductor']
+
+        dataJson = {
+            'auto': auto,
+            'id': id_conductor,
+            'autorizado': autorizado,
+            'usernameConductor': usernameConductor
+        }
+        json_data = json.dumps(dataJson)
+        tcpProtocol.enviar_datos(ip_client, json_data)
+        return 'Datos enviados con éxito'
+
+# Local development
 if __name__ == '__main__':
-    app.run(host='0.0.0.0',debug=True)
+    app.run(host='0.0.0.0', debug=True)
